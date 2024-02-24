@@ -152,6 +152,7 @@ func Hashs(s string) []byte {
 // N times SHA256 Hash function
 // input a string outputs the sha256 bytes
 // H(H(H(H(...string))))
+// requires N > 0
 func HashNs(s string, N int) []byte {
 	h := sha256.New()
 	h.Write([]byte(s))
@@ -173,11 +174,10 @@ func Hashb(bs []byte) []byte {
 }
 
 // same as HashNs but for byte strings
+// requires N >= 0
 func HashNb(bs []byte, N int) []byte {
-	h := sha256.New()
-	h.Write(bs)
-	bsr := h.Sum(nil)
-	for i := 1; i < N; i++ {
+	bsr := bs
+	for i := 0; i < N; i++ {
 		h = sha256.New()
 		h.Write(bsr)
 		bsr = h.Sum(nil)
