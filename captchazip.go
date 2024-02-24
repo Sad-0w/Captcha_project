@@ -15,7 +15,8 @@ func main() {
 	N := flag.Int("hashes", 1000, "the number of hashes to perform on the key string")
 	decorenc := flag.Bool("enc", true, "encrypt (true), or decrypt (false)")
 	target := flag.String("in", "hhgttg.txt", "the file to zip and encrypt or decrypt and unzip")
-	dest := flag.String("out", "hhgttg.bin", "the destination file")
+	dest := flag.String("out", "hhgttg.bin", "the destination file or folder")
+	// for testing if decryption is enabled the destination must be a folder (based on the unzip method used)
 
 	flag.Parse()
 
