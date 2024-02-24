@@ -13,6 +13,9 @@ import (
 func main() {
 	keystr := flag.String("key", "thisisthedefault", "the key to use for encryption or decryption")
 	N := flag.Int("hashes", 1000, "the number of hashes to perform on the key string")
+	decorenc := flag.Bool("enc", true, "encrypt (true), or decrypt (false)")
+	target := flag.String("in", "hhgttg.txt", "the file to zip and encrypt or decrypt and unzip")
+	dest := flag.String("out", "hhgttg.bin", "the destination file")
 
 	flag.Parse()
 
@@ -21,13 +24,11 @@ func main() {
 	graphcolor.Test()
 
 	key := zipenc.HashNs(*keystr, *N)
-	err := zipenc.ZipAndEncrypt(key, "hhgttg.txt", "hhgttg.bin")
-	if err != nil {
-	 	//Print error message:
-		log.Println(err)
-		os.Exit(-2)
-		}
-	err = zipenc.DecryptAndUnzip(key, "hhgttg.bin", "hhgttg")
+	if (*decorenc){
+		err := zipenc.ZipAndEncrypt(key, *target, *dest)
+	} else {
+		err := zipenc.DecryptAndUnzip(key, *target, *dest)
+	}
 	if err != nil {
 	 	//Print error message:
 		log.Println(err)
