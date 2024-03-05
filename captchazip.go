@@ -1,12 +1,12 @@
 package main
 
 import (
-	zipenc "captcha/captcha_lib/zipenc"
 	chess "captcha/captcha_lib/chess"
 	graphcolor "captcha/captcha_lib/graphcolor"
+	zipenc "captcha/captcha_lib/zipenc"
+	"flag"
 	"log"
 	"os"
-	"flag"
 	// "fmt"
 )
 
@@ -20,19 +20,23 @@ func main() {
 
 	flag.Parse()
 
-
 	chess.Test()
 	graphcolor.Test()
 
-	key := zipenc.HashNs(*keystr, *N)
-	if (*decorenc){
-		err := zipenc.ZipAndEncrypt(key, *target, *dest)
+	if *decorenc {
+		err := zipenc.ZipAndEncrypt(keystr, uint16(*N), *target, *dest)
+		if err != nil {
+			//Print error message:
+			log.Println(err)
+			os.Exit(-2)
+		}
 	} else {
-		err := zipenc.DecryptAndUnzip(key, *target, *dest)
+		err := zipenc.DecryptAndUnzip(keystr, *target, *dest)
+		if err != nil {
+			//Print error message:
+			log.Println(err)
+			os.Exit(-2)
+		}
 	}
-	if err != nil {
-	 	//Print error message:
-		log.Println(err)
-		os.Exit(-2)
-	}
+
 }
