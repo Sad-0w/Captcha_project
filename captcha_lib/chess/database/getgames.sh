@@ -1,0 +1,1 @@
+xargs -i wget '{}'  < urls.txt

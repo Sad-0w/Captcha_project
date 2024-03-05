@@ -1,8 +1,8 @@
 package main
 
 import (
-	chess "captcha/captcha_lib/chess"
-	graphcolor "captcha/captcha_lib/graphcolor"
+	"captcha/captcha_lib/chess"
+	"captcha/captcha_lib/graphcolor"
 	zipenc "captcha/captcha_lib/zipenc"
 	"flag"
 	"log"
@@ -11,6 +11,7 @@ import (
 )
 
 func main() {
+	debugLib := flag.String("debug", "zipenc", "the target library to debug (runs Test)")
 	keystr := flag.String("key", "thisisthedefault", "the key to use for encryption or decryption")
 	N := flag.Int("hashes", 1000, "the number of hashes to perform on the key string")
 	decorenc := flag.Bool("enc", true, "encrypt (true), or decrypt (false)")
@@ -20,9 +21,14 @@ func main() {
 
 	flag.Parse()
 
-	chess.Test()
-	graphcolor.Test()
-
+	switch *debugLib {
+	case "chess":
+		chess.Test()
+		return
+	case "graphcolor":
+		graphcolor.Test()
+		return
+	}
 	if *decorenc {
 		err := zipenc.ZipAndEncrypt(keystr, uint16(*N), *target, *dest)
 		if err != nil {
