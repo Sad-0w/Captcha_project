@@ -1,19 +1,14 @@
 package zipenc
 
 import (
-	"crypto/sha256"
-	"encoding/binary"
-	"hash"
-
-	// "crypto/sha512"
+	"archive/zip"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-
-	// "encoding/base64"
-	// "errors"
-	"archive/zip"
+	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
+	"hash"
 	"io"
 	"log"
 	"os"
