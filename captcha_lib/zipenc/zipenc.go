@@ -6,7 +6,8 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/binary"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"hash"
 	"io"
@@ -17,8 +18,8 @@ import (
 )
 
 type ContextHeaderStruct struct {
-	N    uint16
-	Salt []byte
+	N    uint16 `json:"N"`
+	Salt string `json:"Salt"`
 }
 
 func zipFile(infile string, outfile string) error {
@@ -238,10 +239,15 @@ func encrypt(keystr *string, N uint16, infile string, outfile string) (err error
 	cipherText := gcm.Seal(nonce, nonce, plainText, nil)
 
 	// create the context header used to create the key
-	header := make([]byte, 32)
-	copy(header[:16], salt[:])
-	binary.LittleEndian.PutUint16(header[16:], N)
-	encrypted := append(header, cipherText...)
+	var header ContextHeaderStruct
+	header.Salt = base64.StdEncoding.EncodeToString(salt)
+	header.N = N
+	headerB, err := json.Marshal(header)
+	if err != nil {
+		log.Fatalf("Error marshalling header: %v", err.Error())
+		return err
+	}
+	encrypted := append(headerB, cipherText...)
 	// write file to output
 	err = os.WriteFile(outfile, encrypted, 0777)
 	if err != nil {
@@ -252,12 +258,21 @@ func encrypt(keystr *string, N uint16, infile string, outfile string) (err error
 }
 
 // parse the context header used to create the key
-func parseHeader(text []byte) ContextHeaderStruct {
+func parseHeader(text []byte) (ContextHeaderStruct, []byte) {
 	var header ContextHeaderStruct
+	var index int
+	for i, _ := range text {
+		if text[i] == 0x7d {
+			index = i
+			break
+		}
+	}
 
-	header.Salt = text[:16]
-	header.N = binary.LittleEndian.Uint16(text[16:])
-	return header
+	err := json.Unmarshal(text[:index+1], &header)
+	if err != nil {
+		log.Fatalf("Error unmarshalling header: %v", err.Error())
+	}
+	return header, text[index+1:]
 }
 
 // Decrypts a file with AES GCM mode
@@ -271,10 +286,13 @@ func decrypt(keystr string, infile string, outfile string) (err error) {
 		return err
 	}
 
-	header := parseHeader(cipherText[:32])
-	key := HashNs(keystr, header.N, header.Salt)
-
-	cipherText = cipherText[32:]
+	header, strippedCiphertext := parseHeader(cipherText)
+	cipherText = strippedCiphertext
+	salt, err := base64.StdEncoding.DecodeString(header.Salt)
+	if err != nil {
+		log.Fatalf("Error decoding salt: %v", err.Error())
+	}
+	key := HashNs(keystr, header.N, salt)
 
 	// create AES block
 	block, err := aes.NewCipher(key)
