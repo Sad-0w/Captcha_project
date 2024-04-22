@@ -3,15 +3,17 @@ package main
 import (
 	"captcha/captcha_lib/chess"
 	"captcha/captcha_lib/graphcolor"
+	"captcha/captcha_lib/sudoku"
 	zipenc "captcha/captcha_lib/zipenc"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	// "fmt"
 )
 
 func main() {
-	debugLib := flag.String("debug", "zipenc", "the target library to debug (runs Test)")
+	debugLib := flag.String("debug", "sudoku", "the target library to debug (runs Test)")
 	keystr := flag.String("key", "thisisthedefault", "the key to use for encryption or decryption")
 	N := flag.Int("hashes", 1000, "the number of hashes to perform on the key string")
 	decorenc := flag.Bool("enc", true, "encrypt (true), or decrypt (false)")
@@ -21,7 +23,12 @@ func main() {
 
 	flag.Parse()
 
+	var K string
 	switch *debugLib {
+	case "sudoku":
+		K = sudoku.Test(*keystr, uint16(*N))
+		fmt.Println(K)
+		return
 	case "chess":
 		chess.Test()
 		return
@@ -29,8 +36,9 @@ func main() {
 		graphcolor.Test()
 		return
 	}
+
 	if *decorenc {
-		err := zipenc.ZipAndEncrypt(keystr, uint16(*N), *target, *dest)
+		err := zipenc.ZipAndEncrypt(&K, uint16(*N), *target, *dest)
 		if err != nil {
 			//Print error message:
 			log.Println(err)
