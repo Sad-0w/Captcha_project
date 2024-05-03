@@ -23,7 +23,7 @@ func main() {
 
 	switch *debugLib {
 	case "chess":
-		chess.Test()
+		chess.Test(*keystr)
 		return
 	case "graphcolor":
 		graphcolor.Test()

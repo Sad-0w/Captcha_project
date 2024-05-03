@@ -3,9 +3,11 @@ package chess
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
 	"hash"
 	"io"
+	"math/rand"
 	"net/http"
 	"time"
 
@@ -67,11 +69,12 @@ func HashNb(bs []byte, N uint16, salt []byte) []byte {
 }
 
 // to export a function just capitalize the first letter
-func Test() {
-	getChessPuzzles()
+func Test(pwd string) {
+	bpwd := Hashb([]byte(pwd), nil)
+	getChessPuzzles(bpwd)
 }
 
-func getChessPuzzles() {
+func getChessPuzzles(pwd []byte) {
 	// set up engine to use stockfish exe
 	eng, err := uci.New("stockfish")
 	if err != nil {
@@ -82,19 +85,36 @@ func getChessPuzzles() {
 	if err := eng.Run(uci.CmdUCI, uci.CmdIsReady, uci.CmdUCINewGame); err != nil {
 		panic(err)
 	}
+
+	// create a seeded pseudorandom function to be used to generate chess moves
+	Srand := rand.New(rand.NewSource(int64(binary.BigEndian.Uint64(pwd))))
+
 	// have stockfish play speed chess against itself (10 msec per move)
 	game := chess.NewGame()
 	for game.Outcome() == chess.NoOutcome {
+		// select a random move
+		moves := game.ValidMoves()
+		move := moves[Srand.Intn(len(moves))]
+		game.Move(move)
 		cmdPos := uci.CmdPosition{Position: game.Position()}
 		cmdGo := uci.CmdGo{MoveTime: time.Second / 100}
 		if err := eng.Run(cmdPos, cmdGo); err != nil {
 			panic(err)
 		}
-		move := eng.SearchResults().BestMove
-		if err := game.Move(move); err != nil {
-			panic(err)
-		}
+		stat := eng.SearchResults().Info.Score
+		fmt.Println("state: ", stat.CP)
 	}
+	// for game.Outcome() == chess.NoOutcome {
+	// 	cmdPos := uci.CmdPosition{Position: game.Position()}
+	// 	cmdGo := uci.CmdGo{MoveTime: time.Second / 100}
+	// 	if err := eng.Run(cmdPos, cmdGo); err != nil {
+	// 		panic(err)
+	// 	}
+	// 	move := eng.SearchResults().BestMove
+	// 	if err := game.Move(move); err != nil {
+	// 		panic(err)
+	// 	}
+	// }
 	fmt.Println(game.String())
 	fmt.Println(game.Position().Board().Draw())
 	fmt.Printf("Game completed. %s by %s.\n", game.Outcome(), game.Method())
