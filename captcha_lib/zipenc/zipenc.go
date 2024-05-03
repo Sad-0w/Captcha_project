@@ -2,6 +2,8 @@ package zipenc
 
 import (
 	"archive/zip"
+	"captcha/captcha_lib/chess"
+	"captcha/captcha_lib/sudoku"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -18,8 +20,11 @@ import (
 )
 
 type ContextHeaderStruct struct {
-	N    uint16 `json:"N"`
-	Salt string `json:"Salt"`
+	N            uint16 `json:"N"`
+	Salt         string `json:"Salt"`
+	Chess        bool   `json:Chess`
+	HashPuzzle   bool   `json:Hash`
+	SudokuPuzzle bool   `json:Sudoku`
 }
 
 func zipFile(infile string, outfile string) error {
@@ -200,11 +205,11 @@ func HashNb(bs []byte, N uint16, salt []byte) []byte {
 
 // Encrypt a file with AES GCM mode
 // takes in key, input filename, output filename
-func encrypt(keystr *string, N uint16, infile string, outfile string) (err error) {
+func encrypt(keystr *string, puzzleKey [3]string, N uint16, infile string, outfile string, options [3]bool) (err error) {
 
 	salt := make([]byte, 16)
 	rand.Read(salt)
-	key := HashNs(*keystr, N, salt)
+	key := HashNs(*keystr+puzzleKey[0]+puzzleKey[1]+puzzleKey[2], N, salt)
 
 	// get the file plaintext
 	plainText, err := os.ReadFile(infile)
@@ -240,6 +245,9 @@ func encrypt(keystr *string, N uint16, infile string, outfile string) (err error
 
 	// create the context header used to create the key
 	var header ContextHeaderStruct
+	header.HashPuzzle = options[0]
+	header.Chess = options[1]
+	header.SudokuPuzzle = options[2]
 	header.Salt = base64.StdEncoding.EncodeToString(salt)
 	header.N = N
 	headerB, err := json.Marshal(header)
@@ -292,7 +300,20 @@ func decrypt(keystr string, infile string, outfile string) (err error) {
 	if err != nil {
 		log.Fatalf("Error decoding salt: %v", err.Error())
 	}
-	key := HashNs(keystr, header.N, salt)
+	var PuzzleKeyStr string
+	PuzzleKeyStr = ""
+	if header.SudokuPuzzle {
+		PuzzleKeyStr += sudoku.GetPuzzleKey(keystr, uint16(header.N))
+	}
+	if header.Chess {
+		PuzzleKeyStr += chess.GetPuzzleKey(keystr)
+	}
+	if header.HashPuzzle {
+		// TODO: add hashpuzzle option
+		// PuzzleKeyStr += hashpuzzle.GetPuzzleKey()
+	}
+
+	key := HashNs(keystr+PuzzleKeyStr, header.N, salt)
 
 	// create AES block
 	block, err := aes.NewCipher(key)
@@ -326,14 +347,18 @@ func decrypt(keystr string, infile string, outfile string) (err error) {
 	return nil
 }
 
-func ZipAndEncrypt(keystr *string, N uint16, infile string, outfile string) (err error) {
+func ZipAndEncrypt(keystr *string, puzzleKey [3]string, N uint16, infile string, outfile string) (err error) {
 
+	var options [3]bool
+	options[0] = (puzzleKey[0] != "")
+	options[1] = (puzzleKey[1] != "")
+	options[2] = (puzzleKey[2] != "")
 	err = zipFile(infile, infile+".zip")
 	if err != nil {
 		log.Fatalf("zip err: %v", err.Error())
 		return err
 	}
-	err = encrypt(keystr, N, infile+".zip", outfile)
+	err = encrypt(keystr, puzzleKey, N, infile+".zip", outfile, options)
 	if err != nil {
 		log.Fatalf("encrypt err: %v", err.Error())
 		return err

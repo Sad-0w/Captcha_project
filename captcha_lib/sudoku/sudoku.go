@@ -367,7 +367,7 @@ func combineTwoKeys(key string, n uint16) string {
 }
 
 // main
-func Test(key string, n uint16) string {
+func GetPuzzleKey(key string, n uint16) string {
 
 	return combineTwoKeys(key, n)
 }

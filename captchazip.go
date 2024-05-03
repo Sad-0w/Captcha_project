@@ -2,7 +2,6 @@ package main
 
 import (
 	"captcha/captcha_lib/chess"
-	"captcha/captcha_lib/hashpuzzle"
 	"captcha/captcha_lib/sudoku"
 	zipenc "captcha/captcha_lib/zipenc"
 	"flag"
@@ -23,29 +22,34 @@ func main() {
 
 	flag.Parse()
 
+	var PuzzleKey [3]string
 	var K string
+	PuzzleKey[0] = ""
+	PuzzleKey[1] = ""
+	PuzzleKey[2] = ""
 	switch *debugLib {
 	case "sudoku":
-		K = sudoku.Test(*keystr, uint16(*N))
+		PuzzleKey[0] = sudoku.GetPuzzleKey(*keystr, uint16(*N))
 		fmt.Println(K)
-		return
+		// return
 	case "chess":
-		chess.Test(*keystr)
+		PuzzleKey[1] = chess.GetPuzzleKey(*keystr)
 		return
 	case "hashpuzzle":
-		hashpuzzle.Test()
+		// TODO: label hashpuzzle function so it is consistent
+		// PuzzleKey[2] = hashpuzzle.GetPuzzleKey()
 		return
 	}
 
 	if *decorenc {
-		err := zipenc.ZipAndEncrypt(&K, uint16(*N), *target, *dest)
+		err := zipenc.ZipAndEncrypt(&K, PuzzleKey, uint16(*N), *target, *dest)
 		if err != nil {
 			//Print error message:
 			log.Println(err)
 			os.Exit(-2)
 		}
 	} else {
-		err := zipenc.DecryptAndUnzip(keystr, *target, *dest)
+		err := zipenc.DecryptAndUnzip(&K, *target, *dest)
 		if err != nil {
 			//Print error message:
 			log.Println(err)
