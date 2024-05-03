@@ -25,6 +25,7 @@ type ContextHeaderStruct struct {
 	Chess        bool   `json:Chess`
 	HashPuzzle   bool   `json:Hash`
 	SudokuPuzzle bool   `json:Sudoku`
+	ChessOffsets []int  `json:Offsets`
 }
 
 func zipFile(infile string, outfile string) error {
@@ -205,7 +206,7 @@ func HashNb(bs []byte, N uint16, salt []byte) []byte {
 
 // Encrypt a file with AES GCM mode
 // takes in key, input filename, output filename
-func encrypt(keystr *string, puzzleKey [3]string, N uint16, infile string, outfile string, options [3]bool) (err error) {
+func encrypt(keystr *string, puzzleKey [3]string, N uint16, infile string, outfile string, options [3]bool, offsets []int) (err error) {
 
 	salt := make([]byte, 16)
 	rand.Read(salt)
@@ -247,6 +248,7 @@ func encrypt(keystr *string, puzzleKey [3]string, N uint16, infile string, outfi
 	var header ContextHeaderStruct
 	header.HashPuzzle = options[0]
 	header.Chess = options[1]
+	header.ChessOffsets = offsets
 	header.SudokuPuzzle = options[2]
 	header.Salt = base64.StdEncoding.EncodeToString(salt)
 	header.N = N
@@ -306,7 +308,8 @@ func decrypt(keystr string, infile string, outfile string) (err error) {
 		PuzzleKeyStr += sudoku.GetPuzzleKey(keystr, uint16(header.N))
 	}
 	if header.Chess {
-		PuzzleKeyStr += chess.GetPuzzleKey(keystr)
+		res, _ := chess.GetPuzzleKey(keystr, header.ChessOffsets)
+		PuzzleKeyStr += res
 	}
 	if header.HashPuzzle {
 		// TODO: add hashpuzzle option
@@ -347,7 +350,7 @@ func decrypt(keystr string, infile string, outfile string) (err error) {
 	return nil
 }
 
-func ZipAndEncrypt(keystr *string, puzzleKey [3]string, N uint16, infile string, outfile string) (err error) {
+func ZipAndEncrypt(keystr *string, puzzleKey [3]string, N uint16, infile string, outfile string, offsets []int) (err error) {
 
 	var options [3]bool
 	options[0] = (puzzleKey[0] != "")
@@ -358,7 +361,7 @@ func ZipAndEncrypt(keystr *string, puzzleKey [3]string, N uint16, infile string,
 		log.Fatalf("zip err: %v", err.Error())
 		return err
 	}
-	err = encrypt(keystr, puzzleKey, N, infile+".zip", outfile, options)
+	err = encrypt(keystr, puzzleKey, N, infile+".zip", outfile, options, offsets)
 	if err != nil {
 		log.Fatalf("encrypt err: %v", err.Error())
 		return err

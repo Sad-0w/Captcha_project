@@ -24,6 +24,8 @@ func main() {
 
 	var PuzzleKey [3]string
 	var K string
+	var offsets []int
+	offsets = nil
 	PuzzleKey[0] = ""
 	PuzzleKey[1] = ""
 	PuzzleKey[2] = ""
@@ -33,7 +35,7 @@ func main() {
 		fmt.Println(K)
 		// return
 	case "chess":
-		PuzzleKey[1] = chess.GetPuzzleKey(*keystr)
+		PuzzleKey[1], offsets = chess.GetPuzzleKey(*keystr, nil)
 		return
 	case "hashpuzzle":
 		// TODO: label hashpuzzle function so it is consistent
@@ -42,7 +44,7 @@ func main() {
 	}
 
 	if *decorenc {
-		err := zipenc.ZipAndEncrypt(&K, PuzzleKey, uint16(*N), *target, *dest)
+		err := zipenc.ZipAndEncrypt(&K, PuzzleKey, uint16(*N), *target, *dest, offsets)
 		if err != nil {
 			//Print error message:
 			log.Println(err)

@@ -1,45 +1,64 @@
 package chess
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
 	"hash"
-	"io"
+	"math"
 	"math/rand"
-	"net/http"
+	"strings"
 	"time"
 
 	"github.com/notnil/chess"
 	"github.com/notnil/chess/uci"
 )
 
-// Do a POST request and return the result
-func doPostRequest(postURL string, postContents []byte) (int, []byte, error) {
-	// Initialize a client
-	client := &http.Client{}
-	req, err := http.NewRequest("POST", postURL, bytes.NewBuffer(postContents))
-	if err != nil {
-		return 0, nil, err
+const CUTOFF = 700
+const engRuntime = time.Second / 100
+const solutionTime = time.Second * 10
+const PuzzleKeyLen = 2
+
+func promptUserInput(game *chess.Game, solution *chess.Move, retrieveKey bool) bool {
+	if retrieveKey {
+		for {
+			fmt.Println(game.Position().Board().Draw())
+			fmt.Println("it is ", game.Position().Turn().Name(), " to move")
+			fmt.Println("Please enter the next best move in the format:")
+			fmt.Println("piece to move location || location moved to")
+			fmt.Println("example: h8g8 moves the piece at h8 to g8")
+			fmt.Println("if you would like to skip this puzzle then type 'skip'")
+			fmt.Print("Please enter move: ")
+			var w1 string
+			fmt.Scanln(&w1)
+			fmt.Println()
+			if strings.ToLower(w1) == "skip" {
+				return false
+			}
+			if strings.ToLower(w1) == solution.String() {
+				return true
+			} else {
+				fmt.Println("\nThat is not the correct solution")
+			}
+		}
+	} else {
+		for {
+			fmt.Println(game.Position().Board().Draw())
+			fmt.Println("it is ", game.Position().Turn().Name(), " to move")
+			fmt.Println("Please enter the next best move in the format:")
+			fmt.Println("piece to move location || location moved to")
+			fmt.Println("example: h8g8 moves the piece at h8 to g8")
+			fmt.Print("Please enter move: ")
+			var w1 string
+			fmt.Scanln(&w1)
+			fmt.Println()
+			if strings.ToLower(w1) == solution.String() {
+				return true
+			} else {
+				fmt.Println("\nThat is not the correct solution")
+			}
+		}
 	}
-
-	req.Header = http.Header{
-		"Content-Type": {"application/x-www-form-urlencoded"},
-		"User-Agent":   {"Mozilla/5.0 (Macintosh"},
-	}
-
-	// Make the POST request
-	resp, err := client.Do(req)
-	if err != nil {
-		return 0, nil, err
-	}
-
-	// Extract the body contents
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-
-	return resp.StatusCode, body, nil
 }
 
 // same as Hashs but for byte strings
@@ -69,13 +88,15 @@ func HashNb(bs []byte, N uint16, salt []byte) []byte {
 }
 
 // to export a function just capitalize the first letter
-func GetPuzzleKey(pwd string) string {
+func GetPuzzleKey(pwd string, offsets []int) (string, []int) {
 	bpwd := Hashb([]byte(pwd), nil)
-	return getChessPuzzles(bpwd)
+	return getChessPuzzles(bpwd, engRuntime, offsets)
 }
 
-func getChessPuzzles(pwd []byte) string {
+func getChessPuzzles(pwd []byte, timeScale time.Duration, skip []int) (string, []int) {
 	// set up engine to use stockfish exe
+	salt := make([]byte, 16)
+	key := HashNb(pwd, 12, salt)
 	eng, err := uci.New("stockfish")
 	if err != nil {
 		panic(err)
@@ -87,39 +108,52 @@ func getChessPuzzles(pwd []byte) string {
 	}
 
 	// create a seeded pseudorandom function to be used to generate chess moves
-	Srand := rand.New(rand.NewSource(int64(binary.BigEndian.Uint64(pwd))))
+	Srand := rand.New(rand.NewSource(int64(binary.BigEndian.Uint64(key))))
+
+	var result string
+	skipped := make([]int, PuzzleKeyLen)
+	i := 0
 
 	// randomly perform moves until the game is decided
-	game := chess.NewGame()
-	for game.Outcome() == chess.NoOutcome {
-		// select a random move
-		moves := game.ValidMoves()
-		move := moves[Srand.Intn(len(moves))]
-		game.Move(move)
-		cmdPos := uci.CmdPosition{Position: game.Position()}
-		cmdGo := uci.CmdGo{MoveTime: time.Second / 100}
-		if err := eng.Run(cmdPos, cmdGo); err != nil {
-			panic(err)
+	for i < PuzzleKeyLen {
+		game := chess.NewGame()
+		for game.Outcome() == chess.NoOutcome {
+			// select a random move
+			moves := game.ValidMoves()
+			move := moves[Srand.Intn(len(moves))]
+			game.Move(move)
+			cmdPos := uci.CmdPosition{Position: game.Position()}
+			cmdGo := uci.CmdGo{MoveTime: timeScale}
+			if err := eng.Run(cmdPos, cmdGo); err != nil {
+				panic(err)
+			}
+			stat := eng.SearchResults()
+
+			if math.Abs(float64(stat.Info.Score.CP)) > CUTOFF && i < PuzzleKeyLen {
+				if skip != nil && skip[i] > 0 {
+					skip[i]--
+					continue
+				}
+
+				cmdPos := uci.CmdPosition{Position: game.Position()}
+				cmdGo := uci.CmdGo{MoveTime: solutionTime}
+				if err := eng.Run(cmdPos, cmdGo); err != nil {
+					panic(err)
+				}
+				solution_move := stat.BestMove
+
+				// this next line is for testing purposes as it will display the solution
+				fmt.Println("Best move: ", solution_move)
+
+				guess := promptUserInput(game, solution_move, skip == nil)
+				if guess {
+					result += solution_move.String()
+					i++
+				} else {
+					skipped[i]++
+				}
+			}
 		}
-		stat := eng.SearchResults().Info.Score
-		fmt.Println("state: ", stat.CP)
 	}
-	// for game.Outcome() == chess.NoOutcome {
-	// 	cmdPos := uci.CmdPosition{Position: game.Position()}
-	// 	cmdGo := uci.CmdGo{MoveTime: time.Second / 100}
-	// 	if err := eng.Run(cmdPos, cmdGo); err != nil {
-	// 		panic(err)
-	// 	}
-	// 	move := eng.SearchResults().BestMove
-	// 	if err := game.Move(move); err != nil {
-	// 		panic(err)
-	// 	}
-	// }
-	fmt.Println(game.String())
-	fmt.Println(game.Position().Board().Draw())
-	fmt.Printf("Game completed. %s by %s.\n", game.Outcome(), game.Method())
-	fmt.Println(game.String())
-	// Output:
-	// 1.c4 c5 2.Nf3 e6 3.Nc3 Nc6 4.d4 cxd4 5.Nxd4 Nf6 6.a3 d5 7.cxd5 exd5 8.Bf4 Bc5 9.Ndb5 O-O 10.Nc7 d4 11.Na4 Be7 12.Nxa8 Bf5 13.g3 Qd5 14.f3 Rxa8 15.Bg2 Rd8 16.b4 Qe6 17.Nc5 Bxc5 18.bxc5 Nd5 19.O-O Nc3 20.Qd2 Nxe2+ 21.Kh1 d3 22.Bd6 Qd7 23.Rab1 h6 24.a4 Re8 25.g4 Bg6 26.a5 Ncd4 27.Qb4 Qe6 28.Qxb7 Nc2 29.Qxa7 Ne3 30.Rb8 Nxf1 31.Qb6 d2 32.Rxe8+ Qxe8 33.Qb3 Ne3 34.h3 Bc2 35.Qxc2 Nxc2 36.Kh2 d1=Q 37.h4 Qg1+ 38.Kh3 Ne1 39.h5 Qxg2+ 40.Kh4 Nxf3#  0-1
-	return ""
+	return result, skipped
 }
