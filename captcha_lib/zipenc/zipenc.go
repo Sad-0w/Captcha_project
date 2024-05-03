@@ -22,10 +22,10 @@ import (
 type ContextHeaderStruct struct {
 	N            uint16 `json:"N"`
 	Salt         string `json:"Salt"`
-	Chess        bool   `json:Chess`
-	HashPuzzle   bool   `json:Hash`
-	SudokuPuzzle bool   `json:Sudoku`
-	ChessOffsets []int  `json:Offsets`
+	Chess        bool   `json:"Chess"`
+	HashPuzzle   bool   `json:"Hash"`
+	SudokuPuzzle bool   `json:"Sudoku"`
+	ChessOffsets []int  `json:"Offsets"`
 }
 
 func zipFile(infile string, outfile string) error {
