@@ -1,4 +1,4 @@
-package graphcolor
+package hashpuzzle
 
 import (
 	"fmt"
@@ -6,5 +6,5 @@ import (
 
 // to export a function just capitalize the first letter
 func Test() {
-	fmt.Println("This is a test from graph coloring")
+	fmt.Println("This is a test f hashpuzzle")
 }

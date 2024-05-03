@@ -2,7 +2,7 @@ package main
 
 import (
 	"captcha/captcha_lib/chess"
-	"captcha/captcha_lib/graphcolor"
+	"captcha/captcha_lib/hashpuzzle"
 	"captcha/captcha_lib/sudoku"
 	zipenc "captcha/captcha_lib/zipenc"
 	"flag"
@@ -32,8 +32,8 @@ func main() {
 	case "chess":
 		chess.Test()
 		return
-	case "graphcolor":
-		graphcolor.Test()
+	case "hashpuzzle":
+		hashpuzzle.Test()
 		return
 	}
 
