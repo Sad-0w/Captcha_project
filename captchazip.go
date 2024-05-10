@@ -2,6 +2,7 @@ package main
 
 import (
 	"captcha/captcha_lib/chess"
+	"captcha/captcha_lib/hashpuzzle"
 	"captcha/captcha_lib/sudoku"
 	zipenc "captcha/captcha_lib/zipenc"
 	"flag"
@@ -12,7 +13,7 @@ import (
 )
 
 func main() {
-	debugLib := flag.String("debug", "sudoku", "the target library to debug (runs Test)")
+	debugLib := flag.String("debug", "hashpuzzle", "the target library to debug (runs Test)")
 	keystr := flag.String("key", "thisisthedefault", "the key to use for encryption or decryption")
 	N := flag.Int("hashes", 1000, "the number of hashes to perform on the key string")
 	decorenc := flag.Bool("enc", true, "encrypt (true), or decrypt (false)")
@@ -38,8 +39,10 @@ func main() {
 		PuzzleKey[1], offsets = chess.GetPuzzleKey(*keystr, nil)
 		return
 	case "hashpuzzle":
-		// TODO: label hashpuzzle function so it is consistent
-		// PuzzleKey[2] = hashpuzzle.GetPuzzleKey()
+		PuzzleKey[2] = hashpuzzle.GenerateHashKey(*keystr)
+		if len(PuzzleKey) > 0 {
+			fmt.Println(PuzzleKey[2])
+		}
 		return
 	}
 
