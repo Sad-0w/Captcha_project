@@ -1,8 +1,9 @@
 
 
-
+.gitignore
 *.bin
 *.out
 *.zip
 hhgttg
 res
+stockfish/
